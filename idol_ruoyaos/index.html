@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ruoyaos' — 一人三境的虚拟女团</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Space+Grotesk:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    /* ── Variables ──────────────────────────────── */
+    :root {
+      --bg:          #515A91;   /* indigo body */
+      --fg:          #334D38;   /* dark green text */
+      --fg-muted:    rgba(51,77,56,0.65);
+      --fg-light:    rgba(255,255,255,0.88);  /* on-dark text */
+      --surface:     rgba(255,255,255,0.10);  /* card / section surface */
+      --surface-hi:  rgba(255,255,255,0.16);
+      --neon-purple: #7A5CFF;
+      --neon-glow:   rgba(122,92,255,0.35);
+      --border:      rgba(255,255,255,0.18);
+      --border-p:    rgba(122,92,255,0.35);
+    }
+
+    /* ── Reset ──────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; background: var(--bg); }
+    body {
+      background: transparent;   /* html handles base color */
+      color: var(--fg);
+      font-family: 'Space Grotesk', sans-serif;
+      overflow-x: hidden;
+      position: relative;
+    }
+    img { display: block; max-width: 100%; }
+    button { cursor: pointer; border: none; background: none; font-family: inherit; }
+
+    /* ════════════════════════════════════════════
+       PARTICLE CANVAS — fixed background layer
+    ════════════════════════════════════════════ */
+    #particle-canvas {
+      position: fixed;
+      inset: 0;
+      z-index: 0;          /* below all page content */
+      pointer-events: none;
+    }
+
+    /* All main page blocks sit above particles */
+    nav, #hero, #group, #members, #feature, footer {
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ── Nav — normal document flow (scrolls with page) ── */
+    nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1.2rem 3rem;
+      background: rgba(81,90,145,0.75);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-logo {
+      font-family: 'Orbitron', sans-serif;
+      font-weight: 700; font-size: 1.1rem;
+      letter-spacing: 0.1em; color: var(--fg-light);
+      text-decoration: none;
+    }
+    .nav-logo span { color: var(--neon-purple); }
+    .nav-links { display: flex; gap: 2rem; list-style: none; }
+    .nav-links a {
+      color: rgba(255,255,255,0.55);
+      text-decoration: none; font-size: 0.85rem;
+      letter-spacing: 0.05em; transition: color 0.3s;
+    }
+    .nav-links a:hover { color: var(--fg-light); }
+
+    /* ── Scroll-in ──────────────────────────────── */
+    .reveal {
+      opacity: 0; transform: translateY(20px);
+      transition: opacity 0.7s ease-out, transform 0.7s ease-out;
+    }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+    .reveal-delay-1 { transition-delay: 0.15s; }
+    .reveal-delay-2 { transition-delay: 0.30s; }
+    .reveal-delay-3 { transition-delay: 0.45s; }
+
+    /* ── Common ─────────────────────────────────── */
+    section { padding: 7rem 3rem; background: transparent; }
+    .section-title {
+      font-family: 'Orbitron', sans-serif;
+      font-size: clamp(1.6rem, 3vw, 2.2rem);
+      font-weight: 700; color: var(--neon-purple);
+      letter-spacing: 0.06em; margin-bottom: 3rem;
+    }
+    .btn-primary {
+      display: inline-block;
+      padding: 0.9rem 2.4rem;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 0.82rem; font-weight: 600; letter-spacing: 0.12em;
+      color: #fff; background: var(--neon-purple); border: 1px solid var(--neon-purple);
+      transition: background 0.3s, box-shadow 0.3s, color 0.3s;
+    }
+    .btn-primary:hover { background: transparent; color: var(--neon-purple); box-shadow: 0 0 22px var(--neon-glow); }
+    .btn-secondary {
+      display: inline-block; padding: 0.75rem 2rem;
+      font-family: 'Space Grotesk', sans-serif; font-size: 0.85rem;
+      letter-spacing: 0.06em; color: rgba(255,255,255,0.5); border: 1px solid var(--border);
+      transition: color 0.3s, border-color 0.3s;
+    }
+    .btn-secondary:hover { color: var(--fg-light); border-color: var(--fg-light); }
+    .modal-buttons { display: flex; gap: 1rem; justify-content: center; margin-top: 1.5rem; }
+
+    /* ════════════════════════════════════════════
+       1 · HERO — curtain video reveal
+       Nav is now in normal flow → hero starts after it.
+       No margin-top needed.
+    ════════════════════════════════════════════ */
+    #hero {
+      height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      text-align: center; overflow: hidden; padding: 0;
+    }
+    .hero-bg {
+      position: absolute; inset: 0;
+      background-image: url('./pic/ruoyaos.png');
+      background-size: cover; background-position: center top;
+      animation: heroZoom 14s ease-out forwards; z-index: 0;
+    }
+    @keyframes heroZoom { from { transform: scale(1); } to { transform: scale(1.06); } }
+    #hero-video {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      object-fit: cover; z-index: 1;
+    }
+
+    /* ── Curtains: exactly 50% each, no overlap ── */
+    .hero-curtain {
+      position: absolute; top: 0; bottom: 0;
+      width: 50%;
+      z-index: 2;
+      background: linear-gradient(
+        to bottom,
+        rgba(11,15,26,0.30) 0%,
+        rgba(11,15,26,0.55) 55%,
+        rgba(11,15,26,0.94) 100%
+      );
+      transition: transform 0.9s cubic-bezier(0.76, 0, 0.24, 1);
+      will-change: transform;
+    }
+    /* Meet exactly at centre — left from 0, right from 50% */
+    .hero-curtain-left  { left: 0; }
+    .hero-curtain-right { left: 50%; }
+
+    .hero-content {
+      position: relative; z-index: 3;
+      max-width: 800px; padding: 0 2rem;
+      transition: opacity 0.5s ease, transform 0.5s ease;
+    }
+    .hero-scroll-hint {
+      position: absolute; bottom: 2.5rem; left: 50%;
+      transform: translateX(-50%); z-index: 3;
+      display: flex; flex-direction: column; align-items: center; gap: 0.5rem;
+      opacity: 0; animation: fadeUp 0.8s 1.4s ease-out forwards;
+      transition: opacity 0.4s ease;
+    }
+    .hero-scroll-hint span { font-size: 0.7rem; letter-spacing: 0.2em; color: rgba(255,255,255,0.45); text-transform: uppercase; }
+    .scroll-line { width: 1px; height: 48px; background: linear-gradient(to bottom, var(--neon-purple), transparent); animation: scrollPulse 2s ease-in-out infinite; }
+    @keyframes scrollPulse { 0%,100% { opacity: 0.3; transform: scaleY(1); } 50% { opacity: 1; transform: scaleY(1.1); } }
+
+    /* Opened state */
+    #hero.video-open .hero-curtain-left  { transform: translateX(-100%); }
+    #hero.video-open .hero-curtain-right { transform: translateX(100%); }
+    #hero.video-open .hero-content       { opacity: 0; transform: scale(0.97); }
+    #hero.video-open .hero-scroll-hint   { opacity: 0 !important; }
+
+    /* Hero text — always white (over dark overlay) */
+    .hero-eyebrow { font-size: 0.8rem; letter-spacing: 0.3em; color: var(--neon-purple); text-transform: uppercase; margin-bottom: 1.2rem; opacity: 0; animation: fadeUp 0.8s 0.2s ease-out forwards; }
+    .hero-title { font-family: 'Orbitron', sans-serif; font-size: clamp(3rem, 8vw, 6rem); font-weight: 900; line-height: 1.05; letter-spacing: 0.04em; color: #fff; opacity: 0; animation: fadeUp 0.8s 0.45s ease-out forwards; }
+    .hero-title span { color: var(--neon-purple); }
+    .hero-subtitle { margin-top: 1.6rem; font-size: clamp(1rem, 2vw, 1.2rem); color: rgba(255,255,255,0.65); line-height: 1.7; opacity: 0; animation: fadeUp 0.8s 0.7s ease-out forwards; }
+    .hero-tagline { margin-top: 1rem; font-size: 0.9rem; letter-spacing: 0.12em; color: rgba(255,255,255,0.32); opacity: 0; animation: fadeUp 0.8s 0.95s ease-out forwards; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* ════════════════════════════════════════════
+       2 · GROUP
+    ════════════════════════════════════════════ */
+    #group { position: relative; }
+    #group::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(to right, transparent, var(--border), transparent); }
+    .group-inner { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 5rem; align-items: center; }
+    .group-text .section-title { margin-bottom: 2rem; }
+    .group-lead { font-size: 1.05rem; line-height: 1.8; color: var(--fg-light); margin-bottom: 1.5rem; }
+    .group-world { font-size: 0.9rem; line-height: 1.9; color: rgba(255,255,255,0.5); margin-bottom: 2rem; }
+    .group-tags { display: flex; flex-direction: column; gap: 0.6rem; }
+    .group-tags li { list-style: none; display: flex; align-items: center; gap: 0.8rem; font-size: 0.88rem; color: var(--fg-light); }
+    .group-tags li::before { content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--neon-purple); flex-shrink: 0; }
+    .group-image-wrap { position: relative; overflow: hidden; }
+    .group-image-wrap::after { content: ''; position: absolute; inset: 0; border: 1px solid var(--border-p); pointer-events: none; }
+    .group-image-wrap img { width: 100%; transition: transform 0.8s ease-out; }
+    .group-image-wrap:hover img { transform: translateY(-6px); }
+    .group-image-glow { position: absolute; bottom: -40px; left: 50%; transform: translateX(-50%); width: 60%; height: 80px; background: var(--neon-purple); filter: blur(60px); opacity: 0.18; pointer-events: none; }
+
+    /* ════════════════════════════════════════════
+       3 · MEMBERS + GALLERY
+    ════════════════════════════════════════════ */
+    #members::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(to right, transparent, var(--border), transparent); }
+    .members-inner { max-width: 1200px; margin: 0 auto; }
+    .members-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 1.5rem; margin-bottom: 5rem; }
+    .member-card {
+      background: var(--surface); border: 1px solid var(--border);
+      overflow: hidden; transition: transform 0.4s ease, box-shadow 0.4s ease, border-color 0.4s ease;
+    }
+    .member-card:hover { transform: scale(1.05); box-shadow: 0 16px 50px rgba(122,92,255,0.25); border-color: var(--neon-purple); }
+    .member-photo { width: 100%; aspect-ratio: 3/4; object-fit: cover; object-position: top center; }
+    .member-info { padding: 1.5rem; }
+    .member-name { font-family: 'Orbitron', sans-serif; font-size: 1.1rem; font-weight: 700; color: var(--fg-light); margin-bottom: 0.3rem; }
+    .member-name-sub { font-size: 0.75rem; color: var(--neon-purple); letter-spacing: 0.08em; margin-bottom: 0.8rem; }
+    .member-tags { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 1rem; }
+    .member-tag { font-size: 0.7rem; padding: 0.2rem 0.6rem; border: 1px solid var(--border); color: rgba(255,255,255,0.5); letter-spacing: 0.05em; }
+    .member-desc { font-size: 0.95rem; color: var(--fg-light); font-weight: 500; margin-bottom: 0.6rem; }
+    .member-bio { font-size: 0.82rem; color: rgba(255,255,255,0.5); line-height: 1.7; }
+
+    /* Gallery flip cards */
+    .gallery-header { margin-bottom: 1.5rem; }
+    .gallery-header p { font-size: 0.9rem; color: rgba(255,255,255,0.5); line-height: 1.7; margin-top: 0.5rem; }
+    .gallery-grid { display: grid; grid-template-columns: repeat(3,1fr); grid-auto-rows: 220px; gap: 0.5rem; }
+    .gallery-item:nth-child(1) { grid-column: span 2; grid-row: span 2; }
+    .gallery-item:nth-child(4) { grid-column: span 2; }
+    .gallery-item { perspective: 1000px; }
+    .gallery-flip { width: 100%; height: 100%; position: relative; transform-style: preserve-3d; transition: transform 0.75s cubic-bezier(0.76, 0, 0.24, 1); }
+    .gallery-item:hover .gallery-flip { transform: rotateY(180deg); }
+    .gallery-face { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; overflow: hidden; }
+    .gallery-face-front img { width: 100%; height: 100%; object-fit: cover; object-position: top center; transition: transform 0.5s ease; }
+    .gallery-item:hover .gallery-face-front img { transform: scale(1.04); }
+    .gallery-face-back {
+      transform: rotateY(180deg);
+      background: rgba(81,90,145,0.92); backdrop-filter: blur(8px);
+      border: 1px solid var(--border-p);
+      display: flex; flex-direction: column; justify-content: center; padding: 1.6rem;
+    }
+    .gallery-back-label { font-size: 0.65rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--neon-purple); margin-bottom: 0.6rem; }
+    .gallery-back-title { font-family: 'Orbitron', sans-serif; font-size: 0.9rem; font-weight: 700; color: var(--fg-light); margin-bottom: 1rem; }
+    .gallery-back-line { width: 30px; height: 1px; background: var(--neon-purple); margin-bottom: 1rem; }
+    .gallery-back-text { font-size: 0.8rem; color: rgba(255,255,255,0.65); line-height: 1.85; }
+
+    /* ════════════════════════════════════════════
+       4 · FEATURE — carousel
+    ════════════════════════════════════════════ */
+    #feature::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(to right, transparent, var(--border), transparent); }
+    .feature-header { max-width: 700px; margin: 0 auto 3.5rem; text-align: center; }
+    .feature-header .section-title span { color: var(--neon-purple); }
+    .feature-sub { color: rgba(255,255,255,0.55); font-size: 1rem; line-height: 1.8; }
+
+    .carousel-shell { position: relative; max-width: 1100px; margin: 0 auto; padding: 0 3rem; }
+    .carousel-overflow { overflow: hidden; }
+    .carousel-track {
+      display: flex; gap: 1.25rem;
+      transition: transform 0.65s cubic-bezier(0.76, 0, 0.24, 1);
+      will-change: transform;
+    }
+    .tpl-slide {
+      flex: 0 0 calc((100% - 2 * 1.25rem) / 3);
+      background: var(--surface); border: 1px solid var(--border);
+      transition: border-color 0.3s, box-shadow 0.3s; position: relative; overflow: hidden;
+    }
+    .tpl-slide:hover { border-color: var(--neon-purple); box-shadow: 0 8px 36px rgba(122,92,255,0.2); }
+    .tpl-slide-img-wrap { position: relative; overflow: hidden; }
+    .tpl-slide-img-wrap img { width: 100%; aspect-ratio: 3/4; object-fit: cover; object-position: top center; transition: transform 0.5s ease; }
+    .tpl-slide:hover .tpl-slide-img-wrap img { transform: scale(1.04); }
+    .tpl-badge { position: absolute; top: 0.6rem; right: 0.6rem; padding: 0.2rem 0.55rem; font-size: 0.62rem; letter-spacing: 0.06em; font-weight: 700; text-transform: uppercase; }
+    .tpl-badge.free   { background: rgba(122,92,255,0.25); color: #b8a8ff; }
+    .tpl-badge.signed { background: rgba(200,160,50,0.25); color: #f0cb6a; }
+    .tpl-lock-overlay { position: absolute; inset: 0; background: rgba(81,90,145,0.55); display: flex; align-items: center; justify-content: center; font-size: 2.2rem; }
+    .tpl-slide-info { padding: 1.2rem 1.2rem 1.4rem; }
+    .tpl-slide-name { font-family: 'Orbitron', sans-serif; font-size: 0.9rem; font-weight: 700; color: var(--fg-light); margin-bottom: 0.25rem; }
+    .tpl-slide-type  { font-size: 0.75rem; color: rgba(255,255,255,0.45); margin-bottom: 1.1rem; }
+    .tpl-shoot-btn {
+      width: 100%; padding: 0.7rem;
+      font-family: 'Orbitron', sans-serif; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.1em;
+      color: #fff; background: var(--neon-purple); border: 1px solid var(--neon-purple);
+      transition: background 0.3s, box-shadow 0.3s, color 0.3s;
+    }
+    .tpl-shoot-btn:hover { background: transparent; color: var(--neon-purple); box-shadow: 0 0 14px var(--neon-glow); }
+
+    .carousel-arrow {
+      position: absolute; top: 50%; transform: translateY(-50%); z-index: 10;
+      width: 2.4rem; height: 2.4rem; border: 1px solid var(--border);
+      color: rgba(255,255,255,0.6); font-size: 1.3rem;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(81,90,145,0.75);
+      transition: color 0.25s, border-color 0.25s, background 0.25s;
+    }
+    .carousel-arrow:hover { color: #fff; border-color: var(--neon-purple); background: rgba(122,92,255,0.2); }
+    .carousel-arrow:disabled { opacity: 0.2; pointer-events: none; }
+    .carousel-arrow.prev { left: 0; }
+    .carousel-arrow.next { right: 0; }
+    .carousel-dots { display: flex; justify-content: center; gap: 0.5rem; margin-top: 2rem; }
+    .carousel-dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.25); cursor: pointer; transition: background 0.3s, transform 0.3s; }
+    .carousel-dot.active { background: var(--neon-purple); transform: scale(1.4); }
+
+    /* ════════════════════════════════════════════
+       5 · FOOTER
+    ════════════════════════════════════════════ */
+    footer { padding: 4rem 3rem 3rem; border-top: 1px solid var(--border); text-align: center; }
+    .footer-logo { font-family: 'Orbitron', sans-serif; font-size: 1.4rem; font-weight: 900; letter-spacing: 0.08em; margin-bottom: 1rem; color: var(--fg-light); }
+    .footer-logo span { color: var(--neon-purple); }
+    .footer-tagline { color: rgba(255,255,255,0.45); font-size: 0.85rem; line-height: 1.8; }
+    .footer-tagline em { display: block; margin-top: 0.5rem; color: rgba(255,255,255,0.25); font-style: normal; font-size: 0.8rem; letter-spacing: 0.08em; }
+
+    /* ════════════════════════════════════════════
+       MODALS
+    ════════════════════════════════════════════ */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0; z-index: 300;
+      background: rgba(81,90,145,0.88); backdrop-filter: blur(16px);
+      align-items: center; justify-content: center; padding: 2rem;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal-box {
+      background: rgba(60,68,115,0.97); border: 1px solid var(--border-p);
+      max-width: 700px; width: 100%; max-height: 90vh; overflow-y: auto;
+      position: relative; padding: 3rem;
+    }
+    .modal-close { position: absolute; top: 1.2rem; right: 1.5rem; font-size: 1.4rem; color: rgba(255,255,255,0.4); cursor: pointer; transition: color 0.2s; }
+    .modal-close:hover { color: #fff; }
+    .modal-title { font-family: 'Orbitron', sans-serif; font-size: 1.2rem; font-weight: 700; color: var(--fg-light); margin-bottom: 0.6rem; }
+    .modal-sub { font-size: 0.88rem; color: rgba(255,255,255,0.5); margin-bottom: 2rem; }
+
+    /* QR Code */
+    #modal-qrcode .modal-box { max-width: 420px; text-align: center; }
+    .qr-img-wrap { width: 200px; margin: 0 auto 1.8rem; border: 1px solid var(--border); padding: 0.8rem; background: #fff; }
+    .qr-img-wrap img { width: 100%; display: block; }
+
+    /* Camera — portrait 3:4 frame matching template */
+    #modal-camera .modal-box { max-width: 600px; text-align: center; }
+    .cam-wrap {
+      position: relative; width: 100%; max-width: 360px;
+      margin: 0 auto 1.4rem; aspect-ratio: 3 / 4;
+      overflow: hidden; background: #000; border: 1px solid var(--border-p);
+    }
+    #cam-video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+    #cam-template-overlay { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+    #countdown-display {
+      display: none; position: absolute; inset: 0; background: rgba(0,0,0,0.45);
+      align-items: center; justify-content: center; flex-direction: column; gap: 0.5rem; z-index: 10;
+    }
+    #countdown-display.active { display: flex; }
+    #countdown-number { font-family: 'Orbitron', sans-serif; font-size: 5rem; font-weight: 900; color: #fff; text-shadow: 0 0 30px var(--neon-purple); line-height: 1; }
+    #countdown-text { font-size: 0.88rem; color: rgba(255,255,255,0.7); letter-spacing: 0.1em; }
+    #capture-canvas { display: none; }
+    .cam-hint { font-size: 0.8rem; color: rgba(255,255,255,0.45); margin-bottom: 1.2rem; }
+
+    /* Result */
+    #modal-result .modal-box { max-width: 520px; text-align: center; }
+    #result-image { width: 100%; max-width: 320px; margin: 0 auto 1.5rem; border: 1px solid var(--border-p); }
+
+    /* ── Responsive ─────────────────────────────── */
+    @media (max-width: 900px) {
+      nav { padding: 1rem 1.5rem; }
+      .nav-links { display: none; }
+      section { padding: 5rem 1.5rem; }
+      .group-inner { grid-template-columns: 1fr; gap: 3rem; }
+      .members-grid { grid-template-columns: 1fr; }
+      .gallery-grid { grid-template-columns: 1fr 1fr; }
+      .gallery-item:nth-child(1) { grid-column: span 2; grid-row: span 1; }
+      .gallery-item:nth-child(4) { grid-column: span 2; }
+      .tpl-slide { flex: 0 0 calc(50% - 0.625rem); }
+      .carousel-shell { padding: 0 2.5rem; }
+    }
+    @media (max-width: 540px) {
+      .gallery-grid { grid-template-columns: 1fr; }
+      .gallery-item:nth-child(1), .gallery-item:nth-child(4) { grid-column: span 1; }
+      .tpl-slide { flex: 0 0 100%; }
+      .modal-box { padding: 2rem 1.2rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Particle background canvas -->
+<canvas id="particle-canvas"></canvas>
+
+<!-- ═══════════════ NAV (normal flow — scrolls with page) ═══════════════ -->
+<nav>
+  <a class="nav-logo" href="#hero">RUOYAOS<span>'</span></a>
+  <ul class="nav-links">
+    <li><a href="#group">关于</a></li>
+    <li><a href="#members">成员</a></li>
+    <li><a href="#feature">合影</a></li>
+  </ul>
+</nav>
+
+<!-- ═══════════════ HERO ═══════════════ -->
+<section id="hero">
+  <div class="hero-bg"></div>
+  <video id="hero-video" src="./pic/ruoyaos_video_for_hello.mp4" loop muted playsinline preload="auto"></video>
+  <!-- Curtains meet exactly at 50% — no overlap, no gap -->
+  <div class="hero-curtain hero-curtain-left"></div>
+  <div class="hero-curtain hero-curtain-right"></div>
+  <div class="hero-content">
+    <p class="hero-eyebrow">Virtual Idol Group</p>
+    <h1 class="hero-title">RUOYAOS<span>'</span><br/>一人三境的虚拟女团</h1>
+    <p class="hero-subtitle">在宇宙与意识之间分裂与重组的三个自我</p>
+    <p class="hero-tagline">与你相遇的，不止是偶像</p>
+  </div>
+  <div class="hero-scroll-hint">
+    <span>Scroll</span>
+    <div class="scroll-line"></div>
+  </div>
+</section>
+
+<!-- ═══════════════ GROUP ═══════════════ -->
+<section id="group">
+  <div class="group-inner">
+    <div class="group-text">
+      <h2 class="section-title reveal">关于 Ruoyaos'</h2>
+      <p class="group-lead reveal reveal-delay-1">Ruoyaos' 是一个由同一意识分化而成的虚拟偶像组合。<br/>她们并非三个独立个体，而是同一个"自我"在不同层级的呈现。</p>
+      <p class="group-world reveal reveal-delay-2">在近未来的星际时代，人类意识可以被拆解、存储与重构。<br/>她们在宇宙中不断相遇、分离，并尝试重新成为完整的存在。</p>
+      <ul class="group-tags reveal reveal-delay-3">
+        <li>三位成员代表若瑶意识的不同阶段</li>
+        <li>若瑶的性格是复杂的、多面的</li>
+        <li>若瑶的人生哲学是围绕生存的意义而展开</li>
+      </ul>
+    </div>
+    <div class="group-image-wrap reveal reveal-delay-2">
+      <img src="./pic/ruyaos2.png" alt="Ruoyaos' 女团" />
+      <div class="group-image-glow"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ MEMBERS + GALLERY ═══════════════ -->
+<section id="members">
+  <div class="members-inner">
+    <h2 class="section-title reveal">成员</h2>
+    <div class="members-grid">
+      <div class="member-card reveal reveal-delay-1">
+        <img class="member-photo" src="./pic/ego.png" alt="Ego" />
+        <div class="member-info">
+          <div class="member-name">Ego</div><div class="member-name-sub">Ruoyao · E</div>
+          <div class="member-tags"><span class="member-tag">理性</span><span class="member-tag">冷静</span><span class="member-tag">判断</span></div>
+          <p class="member-desc">她负责理解世界，并做出选择。</p>
+          <p class="member-bio">Ego 是最接近现实的部分，她观察、分析，并在复杂中维持秩序。</p>
+        </div>
+      </div>
+      <div class="member-card reveal reveal-delay-2">
+        <img class="member-photo" src="./pic/id.png" alt="Id" />
+        <div class="member-info">
+          <div class="member-name">Id</div><div class="member-name-sub">Ruoyao · I</div>
+          <div class="member-tags"><span class="member-tag">情绪</span><span class="member-tag">冲动</span><span class="member-tag">本能</span></div>
+          <p class="member-desc">她不思考，只感受。</p>
+          <p class="member-bio">Id 是最原始的欲望与直觉，代表未被约束的真实表达。</p>
+        </div>
+      </div>
+      <div class="member-card reveal reveal-delay-3">
+        <img class="member-photo" src="./pic/supergo.png" alt="Superego" />
+        <div class="member-info">
+          <div class="member-name">Superego</div><div class="member-name-sub">Ruoyao · S</div>
+          <div class="member-tags"><span class="member-tag">理想</span><span class="member-tag">秩序</span><span class="member-tag">归宿</span></div>
+          <p class="member-desc">她是你最终会成为的样子。</p>
+          <p class="member-bio">Superego 是意识的终点，象征平衡与归属。</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="gallery-header reveal">
+      <h2 class="section-title" style="margin-bottom:0.5rem;">视觉</h2>
+      <p>她们存在于不同的空间片段<br/>每一次出现，都是一次短暂的重叠</p>
+    </div>
+    <div class="gallery-grid reveal">
+      <div class="gallery-item"><div class="gallery-flip">
+        <div class="gallery-face gallery-face-front"><img src="./pic/ruoyaos.png" alt="三境相遇" /></div>
+        <div class="gallery-face gallery-face-back"><div class="gallery-back-label">Signal · Three</div><div class="gallery-back-title">三境相遇</div><div class="gallery-back-line"></div><p class="gallery-back-text">在意识的坐标系中，三个自我短暂重合。Ego 的理性、Id 的本能与 Superego 的理想同时交汇，宇宙将为此静止一瞬。</p></div>
+      </div></div>
+      <div class="gallery-item"><div class="gallery-flip">
+        <div class="gallery-face gallery-face-front"><img src="./pic/ego.png" alt="Ego" /></div>
+        <div class="gallery-face gallery-face-back"><div class="gallery-back-label">Signal · Ego</div><div class="gallery-back-title">意识第一层</div><div class="gallery-back-line"></div><p class="gallery-back-text">Ego 以旁观者的视角凝视一切，却比任何人都更深陷其中。每一次选择都将刻下不可磨灭的痕迹。</p></div>
+      </div></div>
+      <div class="gallery-item"><div class="gallery-flip">
+        <div class="gallery-face gallery-face-front"><img src="./pic/supergo.png" alt="Superego" /></div>
+        <div class="gallery-face gallery-face-back"><div class="gallery-back-label">Signal · Superego</div><div class="gallery-back-title">意识终点</div><div class="gallery-back-line"></div><p class="gallery-back-text">Superego 不是终点，是归处。她伫立于所有可能性的边缘，见证着每一次分裂与重组，平静如初。</p></div>
+      </div></div>
+      <div class="gallery-item"><div class="gallery-flip">
+        <div class="gallery-face gallery-face-front"><img src="./pic/ruyaos2.png" alt="频率对齐" /></div>
+        <div class="gallery-face gallery-face-back"><div class="gallery-back-label">Signal · Sync</div><div class="gallery-back-title">频率对齐</div><div class="gallery-back-line"></div><p class="gallery-back-text">三人的意识信号罕见地调成了同一频率。影像在那一刻凝固——因为她们同时选择了记住这一刻。</p></div>
+      </div></div>
+      <div class="gallery-item"><div class="gallery-flip">
+        <div class="gallery-face gallery-face-front"><img src="./pic/id.png" alt="Id" /></div>
+        <div class="gallery-face gallery-face-back"><div class="gallery-back-label">Signal · Id</div><div class="gallery-back-title">无界本能</div><div class="gallery-back-line"></div><p class="gallery-back-text">Id 从不思考后果。她活在每一个当下的冲动里，用最原始的方式感知存在——这是混沌，也是最纯粹的自由。</p></div>
+      </div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ FEATURE ═══════════════ -->
+<section id="feature">
+  <div class="feature-header reveal">
+    <h2 class="section-title">与 <span>Ruoyaos'</span> 生成你的专属合影</h2>
+    <p class="feature-sub">选择你想接近的那一面，与她留下属于你的影像记录</p>
+  </div>
+  <div class="carousel-shell reveal reveal-delay-1">
+    <button class="carousel-arrow prev" id="carousel-prev" disabled>&#8249;</button>
+    <div class="carousel-overflow">
+      <div class="carousel-track" id="carousel-track">
+        <div class="tpl-slide"><div class="tpl-slide-img-wrap"><img src="./pic_for_photo/ego_for_photo__nosign.png" alt="Ego" /><span class="tpl-badge free">Free</span></div><div class="tpl-slide-info"><div class="tpl-slide-name">Ego</div><div class="tpl-slide-type">冷色科技感 · 稳定构图</div><button class="tpl-shoot-btn" data-signed="false" data-src="./pic_for_photo/ego_for_photo__nosign.png">立即拍照</button></div></div>
+        <div class="tpl-slide"><div class="tpl-slide-img-wrap"><img src="./pic_for_photo/id_for_photo__nosign.png" alt="Id" /><span class="tpl-badge free">Free</span></div><div class="tpl-slide-info"><div class="tpl-slide-name">Id</div><div class="tpl-slide-type">距离更近 · 张力氛围</div><button class="tpl-shoot-btn" data-signed="false" data-src="./pic_for_photo/id_for_photo__nosign.png">立即拍照</button></div></div>
+        <div class="tpl-slide"><div class="tpl-slide-img-wrap"><img src="./pic_for_photo/supergo_for_photo__nosign.png" alt="Superego" /><span class="tpl-badge free">Free</span></div><div class="tpl-slide-info"><div class="tpl-slide-name">Superego</div><div class="tpl-slide-type">对称构图 · 柔和纪念感</div><button class="tpl-shoot-btn" data-signed="false" data-src="./pic_for_photo/supergo_for_photo__nosign.png">立即拍照</button></div></div>
+        <div class="tpl-slide"><div class="tpl-slide-img-wrap"><img src="./pic_for_photo/ego_for_photo__signed.png" alt="Ego 签名版" /><span class="tpl-badge signed">签名版</span><div class="tpl-lock-overlay">🔒</div></div><div class="tpl-slide-info"><div class="tpl-slide-name">Ego · 签名纪念版</div><div class="tpl-slide-type">限定解锁</div><button class="tpl-shoot-btn" data-signed="true" data-src="./pic_for_photo/ego_for_photo__signed.png">立即拍照</button></div></div>
+        <div class="tpl-slide"><div class="tpl-slide-img-wrap"><img src="./pic_for_photo/id_for_photo__signed.png" alt="Id 签名版" /><span class="tpl-badge signed">签名版</span><div class="tpl-lock-overlay">🔒</div></div><div class="tpl-slide-info"><div class="tpl-slide-name">Id · 签名纪念版</div><div class="tpl-slide-type">限定解锁</div><button class="tpl-shoot-btn" data-signed="true" data-src="./pic_for_photo/id_for_photo__signed.png">立即拍照</button></div></div>
+        <div class="tpl-slide"><div class="tpl-slide-img-wrap"><img src="./pic_for_photo/supergo_for_photo__signed.png" alt="Superego 签名版" /><span class="tpl-badge signed">签名版</span><div class="tpl-lock-overlay">🔒</div></div><div class="tpl-slide-info"><div class="tpl-slide-name">Superego · 签名纪念版</div><div class="tpl-slide-type">限定解锁</div><button class="tpl-shoot-btn" data-signed="true" data-src="./pic_for_photo/supergo_for_photo__signed.png">立即拍照</button></div></div>
+      </div>
+    </div>
+    <button class="carousel-arrow next" id="carousel-next">&#8250;</button>
+  </div>
+  <div class="carousel-dots" id="carousel-dots">
+    <div class="carousel-dot active" data-index="0"></div>
+    <div class="carousel-dot" data-index="1"></div>
+    <div class="carousel-dot" data-index="2"></div>
+    <div class="carousel-dot" data-index="3"></div>
+    <div class="carousel-dot" data-index="4"></div>
+    <div class="carousel-dot" data-index="5"></div>
+  </div>
+</section>
+
+<!-- ═══════════════ FOOTER ═══════════════ -->
+<footer>
+  <div class="footer-logo">RUOYAOS<span>'</span></div>
+  <div class="footer-tagline">若瑶对自我存在的探索<em>她们是否真实，并不重要</em></div>
+</footer>
+
+<!-- ════════════════════════════════════════════ MODALS ═══ -->
+<div class="modal-overlay" id="modal-qrcode">
+  <div class="modal-box">
+    <button class="modal-close" data-modal="modal-qrcode">✕</button>
+    <div class="modal-title">扫码解锁签名版</div>
+    <div class="modal-sub">完成支付后，点击「我已支付」进入拍摄环节</div>
+    <div class="qr-img-wrap"><img src="./pic/qrcode.png" alt="支付二维码" /></div>
+    <div class="modal-buttons">
+      <button class="btn-primary" id="btn-paid">我已支付</button>
+      <button class="btn-secondary" data-modal="modal-qrcode">取消</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-camera">
+  <div class="modal-box">
+    <button class="modal-close" id="btn-close-camera">✕</button>
+    <div class="modal-title">准备合影</div>
+    <div class="modal-sub">请调整位置，准备拍摄</div>
+    <div class="cam-wrap">
+      <video id="cam-video" autoplay playsinline muted></video>
+      <img id="cam-template-overlay" src="" alt="" />
+      <div id="countdown-display">
+        <div id="countdown-number">5</div>
+        <div id="countdown-text">准备</div>
+      </div>
+    </div>
+    <canvas id="capture-canvas"></canvas>
+    <p class="cam-hint">模板已叠加在预览中 · 拍摄时请保持姿势</p>
+    <div class="modal-buttons">
+      <button class="btn-primary" id="btn-shoot">开始倒计时</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-result">
+  <div class="modal-box">
+    <button class="modal-close" data-modal="modal-result">✕</button>
+    <div class="modal-title">你的合影已生成</div>
+    <div class="modal-sub">这是一段属于你的记录</div>
+    <img id="result-image" src="" alt="合影结果" />
+    <div class="modal-buttons">
+      <button class="btn-primary" id="btn-save">保存图片</button>
+      <button class="btn-secondary" id="btn-retake">重拍</button>
+      <button class="btn-secondary" data-modal="modal-result">返回首页</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════
+   PARTICLES
+   Canvas is position:fixed, z-index:0 — behind all z-index:1 content.
+═══════════════════════════════════════════════════════ */
+(function () {
+  const canvas = document.getElementById('particle-canvas');
+  const ctx    = canvas.getContext('2d');
+
+  function resize() {
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  const COUNT = 90;
+  const particles = [];
+
+  function rand(min, max) { return Math.random() * (max - min) + min; }
+
+  function Particle() {
+    this.reset = function () {
+      this.x     = rand(0, canvas.width);
+      this.y     = rand(0, canvas.height);
+      this.r     = rand(0.8, 2.8);
+      this.vx    = rand(-0.22, 0.22);
+      this.vy    = rand(-0.22, 0.22);
+      this.alpha = rand(0.12, 0.5);
+      // slight color variety: white or lavender
+      this.hue   = Math.random() > 0.6 ? '220,200,255' : '255,255,255';
+    };
+    this.reset();
+  }
+
+  for (let i = 0; i < COUNT; i++) {
+    const p = new Particle();
+    // spread initial positions across the full page
+    p.y = rand(0, canvas.height);
+    particles.push(p);
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    for (const p of particles) {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(${p.hue},${p.alpha})`;
+      ctx.fill();
+
+      p.x += p.vx;
+      p.y += p.vy;
+
+      // wrap around edges
+      if (p.x < -4)                p.x = canvas.width + 4;
+      if (p.x > canvas.width + 4)  p.x = -4;
+      if (p.y < -4)                p.y = canvas.height + 4;
+      if (p.y > canvas.height + 4) p.y = -4;
+    }
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+/* ═══════════════════════════════════════════════════════
+   SCROLL REVEAL
+═══════════════════════════════════════════════════════ */
+const revealObs = new IntersectionObserver(entries => {
+  entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); revealObs.unobserve(e.target); } });
+}, { threshold: 0.1 });
+document.querySelectorAll('.reveal').forEach(el => revealObs.observe(el));
+
+/* ═══════════════════════════════════════════════════════
+   HERO — curtain video reveal
+═══════════════════════════════════════════════════════ */
+const heroEl    = document.getElementById('hero');
+const heroVideo = document.getElementById('hero-video');
+heroEl.addEventListener('mouseenter', () => { heroEl.classList.add('video-open'); heroVideo.play().catch(() => {}); });
+heroEl.addEventListener('mouseleave', () => { heroEl.classList.remove('video-open'); heroVideo.pause(); });
+
+/* ═══════════════════════════════════════════════════════
+   CAROUSEL — with slow autoplay
+═══════════════════════════════════════════════════════ */
+const track   = document.getElementById('carousel-track');
+const btnPrev = document.getElementById('carousel-prev');
+const btnNext = document.getElementById('carousel-next');
+const dots    = document.querySelectorAll('.carousel-dot');
+const TOTAL   = 6;
+let idx       = 0;
+let paused    = false;
+
+function visibleCount() {
+  return window.innerWidth > 900 ? 3 : window.innerWidth > 540 ? 2 : 1;
+}
+function slideWidth() {
+  const s = track.querySelector('.tpl-slide');
+  return s ? s.offsetWidth + 20 : 300;   /* gap ≈ 1.25rem = 20px */
+}
+function renderCarousel() {
+  const max = TOTAL - visibleCount();
+  idx = Math.max(0, Math.min(idx, max));
+  track.style.transform = `translateX(-${idx * slideWidth()}px)`;
+  btnPrev.disabled = idx === 0;
+  btnNext.disabled = idx >= max;
+  dots.forEach((d, i) => d.classList.toggle('active', i === idx));
+}
+function userNav(newIdx) {
+  idx = newIdx;
+  paused = true;
+  renderCarousel();
+  clearTimeout(unpauseTimer);
+  unpauseTimer = setTimeout(() => { paused = false; }, 6000);
+}
+let unpauseTimer;
+btnPrev.addEventListener('click', () => userNav(idx - 1));
+btnNext.addEventListener('click', () => userNav(idx + 1));
+dots.forEach(d => d.addEventListener('click', () => userNav(+d.dataset.index)));
+window.addEventListener('resize', renderCarousel);
+
+/* Slow autoplay — advances every 3.5 s */
+setInterval(() => {
+  if (paused) return;
+  const max = TOTAL - visibleCount();
+  idx = idx >= max ? 0 : idx + 1;
+  renderCarousel();
+}, 3500);
+
+/* ═══════════════════════════════════════════════════════
+   MODALS
+═══════════════════════════════════════════════════════ */
+const openModal  = id => document.getElementById(id).classList.add('active');
+const closeModal = id => document.getElementById(id).classList.remove('active');
+document.querySelectorAll('[data-modal]').forEach(b => b.addEventListener('click', () => closeModal(b.dataset.modal)));
+
+/* ═══════════════════════════════════════════════════════
+   PHOTO FLOW
+   Template composite fix:
+   fetch() → blob → createImageBitmap(blob)
+   ImageBitmap created from a same-page blob is origin-clean,
+   so ctx.drawImage(imageBitmap) never taints the canvas and
+   toDataURL() always succeeds with the full composite.
+═══════════════════════════════════════════════════════ */
+let currentSrc      = '';
+let templateBitmap  = null;   /* ImageBitmap — always origin-clean */
+
+async function loadTemplateBitmap(src) {
+  templateBitmap = null;
+  try {
+    const resp = await fetch(src);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const blob = await resp.blob();
+    /* createImageBitmap(blob) is taint-free: the bitmap data
+       lives entirely in the page's own memory, not a remote origin. */
+    templateBitmap = await createImageBitmap(blob);
+  } catch (e) {
+    console.warn('Template preload failed — composite unavailable.',
+      '(If using file://, serve via a local HTTP server.)', e.message);
+  }
+}
+
+/* Shoot buttons */
+document.querySelectorAll('.tpl-shoot-btn').forEach(btn => {
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+    currentSrc = btn.dataset.src;
+    if (btn.dataset.signed === 'true') { openModal('modal-qrcode'); }
+    else { startCamera(); }
+  });
+});
+
+document.getElementById('btn-paid').addEventListener('click', () => { closeModal('modal-qrcode'); startCamera(); });
+
+let mediaStream = null;
+async function startCamera() {
+  openModal('modal-camera');
+  /* Set visual preview overlay */
+  document.getElementById('cam-template-overlay').src = currentSrc;
+  /* Preload template as ImageBitmap for taint-free canvas composite */
+  await loadTemplateBitmap(currentSrc);
+  try {
+    mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+    document.getElementById('cam-video').srcObject = mediaStream;
+  } catch {
+    alert('需要摄像头权限以完成合影。\n请在浏览器设置中允许摄像头访问后重试。');
+    closeModal('modal-camera');
+  }
+}
+function stopCamera() {
+  if (mediaStream) { mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null; }
+}
+document.getElementById('btn-close-camera').addEventListener('click', () => { stopCamera(); closeModal('modal-camera'); });
+
+/* Countdown */
+const CD = { 5:'准备', 4:'调整位置', 3:'保持姿势', 2:'即将拍摄', 1:'拍摄' };
+let counting = false;
+document.getElementById('btn-shoot').addEventListener('click', function () {
+  if (counting) return;
+  counting = true; this.disabled = true;
+  const display = document.getElementById('countdown-display');
+  const numEl = document.getElementById('countdown-number');
+  const txtEl = document.getElementById('countdown-text');
+  const btn   = this;
+  let count = 5;
+  numEl.textContent = count; txtEl.textContent = CD[count];
+  display.classList.add('active');
+  const timer = setInterval(() => {
+    count--;
+    if (count <= 0) {
+      clearInterval(timer);
+      display.classList.remove('active');
+      counting = false; btn.disabled = false;
+      capturePhoto();
+    } else {
+      numEl.textContent = count; txtEl.textContent = CD[count];
+    }
+  }, 1000);
+});
+
+/* ── capturePhoto ─────────────────────────────────────
+   Canvas = 720×960 (3:4, matches template 1242×1660).
+   1. Webcam frame centre-cropped to portrait (never taints).
+   2. templateBitmap (ImageBitmap from blob) overlaid — origin-clean,
+      never taints, so toDataURL always succeeds with full composite.
+──────────────────────────────────────────────────────── */
+function capturePhoto() {
+  const video  = document.getElementById('cam-video');
+  const canvas = document.getElementById('capture-canvas');
+  const CW = 720, CH = 960;
+  canvas.width = CW; canvas.height = CH;
+  const ctx = canvas.getContext('2d');
+
+  /* Centre-crop webcam to portrait 3:4 */
+  const vW = video.videoWidth  || 640;
+  const vH = video.videoHeight || 480;
+  const tRatio = CW / CH;
+  const vRatio = vW / vH;
+  let sx, sy, sw, sh;
+  if (vRatio > tRatio) {
+    sh = vH; sw = vH * tRatio; sx = (vW - sw) / 2; sy = 0;
+  } else {
+    sw = vW; sh = vW / tRatio; sx = 0; sy = (vH - sh) / 2;
+  }
+  ctx.save();
+  ctx.translate(CW, 0); ctx.scale(-1, 1);
+  ctx.drawImage(video, sx, sy, sw, sh, 0, 0, CW, CH);
+  ctx.restore();
+
+  /* Overlay template — ImageBitmap is origin-clean, no canvas taint */
+  if (templateBitmap) {
+    ctx.drawImage(templateBitmap, 0, 0, CW, CH);
+  }
+
+  /* Export — safe: only origin-clean sources were drawn */
+  const dataUrl = canvas.toDataURL('image/png');
+  document.getElementById('result-image').src = dataUrl;
+  stopCamera();
+  closeModal('modal-camera');
+  openModal('modal-result');
+}
+
+document.getElementById('btn-save').addEventListener('click', () => {
+  const src = document.getElementById('result-image').src;
+  if (!src) return;
+  const a = document.createElement('a');
+  a.download = 'ruoyaos-photo.png'; a.href = src; a.click();
+});
+document.getElementById('btn-retake').addEventListener('click', () => { closeModal('modal-result'); startCamera(); });
+</script>
+</body>
+</html>
